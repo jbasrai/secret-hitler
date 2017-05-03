@@ -3,34 +3,13 @@ const {sendInProgressGameUpdate} = require('../util.js'),
 	{sendUserList, sendGameList} = require('../user-requests.js'),
 	Account = require('../../../models/account.js'),
 	Game = require('../../../models/game'),
+	debug = require('debug')('game'),
 	saveGame = game => {
-		const gameToSave = new Game({
-			uid: game.general.uid,
-			date: new Date(),
-			winningPlayers: game.private.seatedPlayers.filter(player => player.wonGame).map(player => (
-				{
-					userName: player.userName,
-					team: player.role.team,
-					role: player.role.cardName
-				}
-			)),
-			losingPlayers: game.private.seatedPlayers.filter(player => !player.wonGame).map(player => (
-				{
-					userName: player.userName,
-					team: player.role.team,
-					role: player.role.cardName
-				}
-			)),
-			chats: game.chats.filter(chat => !chat.gameChat).map(chat => (
-				{
-					timestamp: chat.timestamp,
-					chat: chat.chat,
-					userName: chat.userName
-				}
-			)),
-			winningTeam: game.gameState.isCompleted,
-			playerCount: game.general.playerCount
-		});
+		const
+			summary = game.private.summary.publish(),
+			gameToSave = new Game(summary);
+
+		debug('Saving game: %O', summary);
 
 		gameToSave.save();
 	};

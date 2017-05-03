@@ -10,6 +10,10 @@ const {sendInProgressGameUpdate} = require('../util.js'),
 		const index = game.trackState.enactedPolicies.length,
 			{experiencedMode} = game.general;
 
+		game.private.summary = game.private.summary.updateLog({
+			enactedPolicy: team
+		});
+
 		game.general.status = 'A policy is being enacted.';
 		game.trackState[`${team}PolicyCount`]++;
 		sendGameList();
@@ -145,7 +149,14 @@ const {sendInProgressGameUpdate} = require('../util.js'),
 
 			game.trackState.electionTrackerCount = 0;
 		}, process.env.NODE_ENV === 'development' ? 100 : experiencedMode ? 1000 : 4000);
-	};
+	},
+	handToLog = hand => hand.reduce((hand, policy) => {
+		if (policy === 'fascist') {
+			return Object.assign({}, hand, { reds: hand.reds + 1 });
+		} else {
+			return Object.assign({}, hand, { blues: hand.blues + 1 });
+		}
+	}, { reds: 0, blues: 0 });
 
 module.exports.selectChancellor = data => {
 	const game = games.find(el => el.general.uid === data.uid),
@@ -156,6 +167,10 @@ module.exports.selectChancellor = data => {
 		seatedPlayers = game.private.seatedPlayers.filter(player => !player.isDead),
 		presidentPlayer = game.private.seatedPlayers[presidentIndex],
 		chancellorPlayer = game.private.seatedPlayers[chancellorIndex];
+
+	game.private.summary = game.private.summary.updateLog({
+		chancellorId: chancellorIndex
+	});
 
 	if (!isAlreadySelected) {
 		game.publicPlayersState[presidentIndex].isLoader = false;
@@ -307,6 +322,11 @@ module.exports.selectVoting = data => {
 
 			gameState.undrawnPolicyCount--;
 			game.private.currentElectionPolicies = [game.private.policies.shift(), game.private.policies.shift(), game.private.policies.shift()];
+
+			game.private.summary = game.private.summary.updateLog({
+				presidentHand: handToLog(game.private.currentElectionPolicies)
+			});
+
 			seatedPlayers[presidentIndex].cardFlingerState = [
 				{
 					position: 'middle-far-left',
@@ -360,6 +380,10 @@ module.exports.selectVoting = data => {
 					player.cardStatus.cardBack.cardName = seatedPlayers[i].voteStatus.didVoteYes ? 'ja' : 'nein';
 					player.cardStatus.isFlipped = true;
 				}
+			});
+
+			game.private.summary = game.private.summary.updateLog({
+				votes: seatedPlayers.map(p => p.voteStatus.didVoteYes)
 			});
 
 			sendInProgressGameUpdate(game);
@@ -527,6 +551,11 @@ module.exports.selectPresidentPolicy = data => {
 		chancellorIndex = game.publicPlayersState.findIndex(player => player.governmentStatus === 'isChancellor'),
 		chancellor = game.private.seatedPlayers[chancellorIndex],
 		nonDiscardedPolicies = _.range(0, 3).filter(num => num !== data.selection);
+
+	game.private.summary = game.private.summary.updateLog({
+		chancellorHand: handToLog(game.private.currentElectionPolicies
+			.filter((p, i) => i !== data.selection))
+	});
 
 	game.publicPlayersState[presidentIndex].isLoader = false;
 	game.publicPlayersState[chancellorIndex].isLoader = true;

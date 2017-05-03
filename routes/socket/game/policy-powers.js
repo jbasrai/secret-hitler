@@ -136,6 +136,10 @@ module.exports.selectPartyMembershipInvestigate = data => {
 	if (!seatedPlayers[playerIndex].wasInvestigated) {
 		seatedPlayers[playerIndex].wasInvestigated = true;
 
+		game.private.summary = game.private.summary.updateLog({
+			investigation: playerIndex
+		});
+
 		president.playersState.forEach(player => {
 			player.notificationStatus = '';
 		});
@@ -238,6 +242,10 @@ module.exports.specialElection = game => {
 module.exports.selectSpecialElection = data => {
 	const game = games.find(el => el.general.uid === data.uid);
 
+	game.private.summary = game.private.summary.updateLog({
+		specialElection: data.playerIndex
+	});
+
 	game.publicPlayersState[game.gameState.presidentIndex].isLoader = false;
 
 	game.private.seatedPlayers[game.gameState.presidentIndex].playersState.forEach(player => {
@@ -297,6 +305,10 @@ module.exports.selectPlayerToExecute = data => {
 				},
 				{text: '.'}]
 		};
+
+	game.private.summary = game.private.summary.updateLog({
+		execution: playerIndex
+	});
 
 	if (!game.general.disableGamechat) {
 		game.private.unSeatedGameChats.push(nonPresidentChat);

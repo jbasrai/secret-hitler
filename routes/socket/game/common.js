@@ -38,6 +38,10 @@ module.exports.startElection = (game, specialElectionPresidentIndex) => {
 		return index;
 	})();
 
+	game.private.summary = game.private.summary
+		.nextTurn()
+		.updateLog({ presidentId: game.gameState.presidentIndex });
+
 	const {seatedPlayers} = game.private,
 		{presidentIndex, previousElectedGovernment} = game.gameState,
 		pendingPresidentPlayer = seatedPlayers[presidentIndex];

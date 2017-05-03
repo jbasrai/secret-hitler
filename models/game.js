@@ -3,11 +3,32 @@ const mongoose = require('mongoose'),
 	Game = new Schema({
 		uid: String,
 		date: Date,
-		playerCount: Number,
-		winningPlayers: Array,
-		losingPlayers: Array,
-		chats: Array,
-		winningTeam: String
+		players: [{
+			username: String,
+			role: String
+		}],
+		logs: [{
+			// election
+			presidentId: Number,
+			chancellorId: Number,
+			votes: Array, // [Boolean]
+
+			// policy enaction
+			presidentHand: {
+				reds: Number,
+				blues: Number
+			},
+			chancellorHand: {
+				reds: Number,
+				blues: Number
+			},
+			enactedPolicy: String,
+
+			// actions
+			investigation: Number,
+			specialElection: Number,
+			execution: Number
+		}]
 	});
 
 module.exports = mongoose.model('Game', Game);
