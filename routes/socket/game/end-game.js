@@ -5,7 +5,7 @@ const {sendInProgressGameUpdate} = require('../util.js'),
 	Game = require('../../../models/game'),
 	buildEnhancedGameSummary = require('../../../models/game-summary/buildEnhancedGameSummary'),
 	{updateProfiles} = require('../../../models/profile/utils'),
-	debug = require('debug')('game'),
+	debug = require('debug')('game:summary'),
 	saveGame = game => {
 		const
 			summary = game.private.summary.publish(),
@@ -76,7 +76,7 @@ module.exports.completeGame = (game, winningTeamName) => {
 			publicPlayersState.find(play => play.userName === player.userName).isConfetti = false;
 		});
 		sendInProgressGameUpdate(game);
-	}, 5000);
+	}, 15000);
 
 	game.general.status = winningTeamName === 'fascist' ? 'Fascists win the game.' : 'Liberals win the game.';
 	game.gameState.isCompleted = winningTeamName;
@@ -91,22 +91,37 @@ module.exports.completeGame = (game, winningTeamName) => {
 	});
 
 	game.private.unSeatedGameChats.push(chat);
+
+	game.summary = game.private.summary;
+	debug('Final game summary: %O', game.summary.publish().toObject());
+
 	sendInProgressGameUpdate(game);
 
 	saveGame(game);
 
 	Account.find({username: {$in: seatedPlayers.map(player => player.userName)}})
 		.then(results => {
-			const winningPlayerNames = winningPrivatePlayers.map(player => player.userName);
+			const winningPlayerNames = winningPrivatePlayers.map(player => player.userName),
+				isRainbow = game.general.rainbowgame;
 
 			results.forEach(player => {
 				let winner = false;
 
 				if (winningPlayerNames.includes(player.username)) {
-					player.wins++;
+					if (isRainbow) {
+						player.rainbowWins = player.rainbowWins ? player.rainbowWins + 1 : 1;
+						player.rainbowLosses = player.rainbowLosses ? player.rainbowLosses : 0;
+					} else {
+						player.wins++;
+					}
 					winner = true;
 				} else {
-					player.losses++;
+					if (isRainbow) {
+						player.rainbowLosses = player.rainbowLosses ? player.rainbowLosses + 1 : 1;
+						player.rainbowWins = player.rainbowWins ? player.rainbowWins : 0;
+					} else {
+						player.losses++;
+					}
 				}
 
 				player.games.push(game.uid);
@@ -115,9 +130,17 @@ module.exports.completeGame = (game, winningTeamName) => {
 
 					if (userEntry) {
 						if (winner) {
-							userEntry.wins++;
+							if (isRainbow) {
+								userEntry.rainbowWins = userEntry.rainbowWins ? userEntry.rainbowWins + 1 : 1;
+							} else {
+								userEntry.wins++;
+							}
 						} else {
-							userEntry.losses++;
+							if (isRainbow) {
+								userEntry.rainbowLosses = userEntry.rainbowLosses ? userEntry.rainbowLosses + 1 : 1;
+							} else {
+								userEntry.losses++;
+							}
 						}
 
 						sendUserList();

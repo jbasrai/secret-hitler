@@ -77,21 +77,33 @@ export const fetchProfile = username => dispatch => {
 		}));
 };
 
+export const loadReplay = summary => dispatch => {
+	const game = buildEnhancedGameSummary(summary);
+	const replay = buildReplay(game);
+
+	console.log(dispatch)
+
+	dispatch({
+		type: 'RECEIVE_REPLAY',
+		replay
+	});
+
+	dispatch(updateMidsection('replay'));
+};
+
 export const fetchReplay = gameId => dispatch  => {
 	return fetch(`/gameSummary?id=${gameId}`)
 		.then(response => response.json())
-		.then(summary => buildEnhancedGameSummary(summary))
-		.then(game => buildReplay(game))
-		.then(replay => {
-			dispatch({
-				type: 'RECEIVE_REPLAY',
-				replay
-			})
+		.then(summary => dispatch(loadReplay(summary)));
+};
 
-			dispatch(updateMidsection('replay'));
-		})
-		.catch(err => {
-			console.log(err);
-			dispatch({ type: 'REPLAY_NOT_FOUND' });
-		});
+export function updateVersion(version) {
+	return {
+		type: 'UPDATE_VERSION',
+		version
+	};
+};
+
+export function viewPatchNotes() {
+	return { type: 'VIEW_PATCH_NOTES' }
 };

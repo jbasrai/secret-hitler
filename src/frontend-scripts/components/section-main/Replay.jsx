@@ -224,9 +224,6 @@ const Replay = ({ replay, isSmall, playback }) => {
 
 	const { turnNum, phase, description } = snapshot;
 
-	console.log(snapshot.presidentHand);
-	console.log(snapshot.presidentDiscard);
-
 	const pickOverlay = () => {
 		switch (snapshot.phase) {
 		case 'presidentLegislation':

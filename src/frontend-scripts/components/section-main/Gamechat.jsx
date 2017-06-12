@@ -1,8 +1,15 @@
 import React from 'react';
+import { connect } from 'react-redux';
 import $ from 'jquery';
-import {PLAYERCOLORS} from '../../constants';
+import {PLAYERCOLORS, MODERATORS} from '../../constants';
+import { loadReplay } from '../../actions/actions';
+import classnames from 'classnames';
 
-export default class Gamechat extends React.Component {
+const mapDispatchToProps = dispatch => ({
+	loadReplay: summary => dispatch(loadReplay(summary))
+});
+
+class Gamechat extends React.Component {
 	constructor() {
 		super();
 		this.handleChatFilterClick = this.handleChatFilterClick.bind(this);
@@ -141,13 +148,14 @@ export default class Gamechat extends React.Component {
 
 	processChats() {
 		const {gameInfo, userInfo, userList} = this.props,
+			seatedUserNames = gameInfo.publicPlayersState.map(player => player.userName),
 			{chatFilter} = this.state;
 
 		return gameInfo.chats.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-			.filter(chat => ((chat.gameChat && (chatFilter === 'Game' || chatFilter === 'All'))) || (!chat.gameChat && chatFilter !== 'Game'))
+			.filter(chat => (chatFilter === 'No observer chat' && (chat.gameChat || seatedUserNames.includes(chat.userName))) || (chat.gameChat && (chatFilter === 'Game' || chatFilter === 'All')) || (!chat.gameChat && chatFilter !== 'Game' && chatFilter !== 'No observer chat'))
 			.map((chat, i) => {
 				const chatContents = chat.chat,
-					isSeated = Boolean(gameInfo.publicPlayersState.find(player => player.userName === chat.userName)),
+					isSeated = seatedUserNames.includes(chat.userName),
 					playerListPlayer = Object.keys(userList).length ? userList.list.find(player => player.userName === chat.userName) : undefined;
 
 				return chat.gameChat ? (
@@ -198,8 +206,10 @@ export default class Gamechat extends React.Component {
 				</div>
 			) :	(
 				<div className="item" key={i}>
-					<span className={playerListPlayer ? (userInfo.gameSettings && userInfo.gameSettings.disablePlayerColorsInChat) ? 'chat-user' : `chat-user ${PLAYERCOLORS(playerListPlayer)}` : 'chat-user'}>{gameInfo.gameState.isTracksFlipped ? isSeated ? `${chat.userName} {${gameInfo.publicPlayersState.findIndex(publicPlayer => publicPlayer.userName === chat.userName) + 1}}` : chat.userName : chat.userName}{isSeated ? '' : ' (Observer)'}{this.handleTimestamps(chat.timestamp)}: </span>
-					<span>{chatContents}</span>
+					<span className={playerListPlayer ? (userInfo.gameSettings && userInfo.gameSettings.disablePlayerColorsInChat) ? 'chat-user' : `chat-user ${PLAYERCOLORS(playerListPlayer)}` : 'chat-user'}>
+						{gameInfo.gameState.isTracksFlipped ? isSeated ? `${chat.userName} {${gameInfo.publicPlayersState.findIndex(publicPlayer => publicPlayer.userName === chat.userName) + 1}}` : chat.userName : chat.userName}{isSeated ? '' : MODERATORS.includes(chat.userName) ? <span><span className="moderator-name"> (M)</span><span className="observer-chat"> (Observer)</span></span> : <span className="observer-chat"> (Observer)</span>}{this.handleTimestamps(chat.timestamp)}:
+					</span>
+					<span> {chatContents}</span>
 				</div>
 				);
 			});
@@ -222,6 +232,58 @@ export default class Gamechat extends React.Component {
 					whitelistPlayers
 				});
 				$(this.whitelistModal).modal('hide');
+			},
+			MenuButton = ({ children }) => (
+				<div className="item">{children}</div>
+			),
+			WhiteListButton = () => {
+				if (userInfo.isSeated && gameInfo.general.private && !gameInfo.gameState.isStarted) {
+					return (
+						<MenuButton>
+							<div
+								className="ui button whitelist"
+								onClick={this.handleWhitelistPlayers}>
+								Whitelist Players
+							</div>
+						</MenuButton>
+					);
+				} else {
+					return null;
+				}
+			},
+			WatchReplayButton = () => {
+				const { summary } = gameInfo;
+				const { loadReplay } = this.props;
+				console.log(summary);
+
+				if (summary) {
+					return (
+						<MenuButton>
+							<div
+								className="ui primary button"
+								onClick={loadReplay.bind(null, summary)}>
+								Watch Replay
+							</div>
+						</MenuButton>
+					);
+				} else {
+					return null;
+				}
+			},
+			LeaveGameButton = () => {
+				const classes = classnames('ui primary button', {
+					['ui-disabled']: userInfo.isSeated && gameInfo.gameState.isStarted && !gameInfo.gameState.isCompleted
+				});
+
+				return (
+					<MenuButton>
+						<div
+							className={classes}
+							onClick={this.handleClickedLeaveGame}>
+							Leave Game
+						</div>
+					</MenuButton>
+				);
 			};
 
 		return (
@@ -230,23 +292,13 @@ export default class Gamechat extends React.Component {
 					<a className={this.state.chatFilter === 'All' ? 'item active' : 'item'} onClick={this.handleChatFilterClick}>All</a>
 					<a className={this.state.chatFilter === 'Chat' ? 'item active' : 'item'} onClick={this.handleChatFilterClick}>Chat</a>
 					<a className={this.state.chatFilter === 'Game' ? 'item active' : 'item'} onClick={this.handleChatFilterClick}>Game</a>
+					<a className={this.state.chatFilter === 'No observer chat' ? 'item active' : 'item'} onClick={this.handleChatFilterClick}>No observer chat</a>
 					<i className={this.state.lock ? 'large lock icon' : 'large unlock alternate icon'} onClick={this.handleChatLockClick} />
-					{(() => {
-						if (userInfo.isSeated && gameInfo.general.private && !gameInfo.gameState.isStarted) {
-							return <div className='ui button whitelist' onClick={this.handleWhitelistPlayers}>Whitelist Players</div>;
-						}
-					})()}
-					<div className={
-						(() => {
-							let classes = 'ui primary button';
-
-							if (userInfo.isSeated && (gameInfo.gameState.isStarted && !gameInfo.gameState.isCompleted)) {
-								classes += ' ui-disabled';
-							}
-
-							return classes;
-						})()
-					} onClick={this.handleClickedLeaveGame}>Leave Game</div>
+					<div className="right menu">
+						<WhiteListButton />
+						<WatchReplayButton />
+						<LeaveGameButton />
+					</div>
 				</section>
 				<section className={
 					(() => {
@@ -386,7 +438,7 @@ export default class Gamechat extends React.Component {
 									{gameState, publicPlayersState} = gameInfo,
 									{gameSettings, userName, isSeated} = userInfo,
 									isDead = (() => {
-										if (this.props.userInfo.isSeated
+										if (userName
 											&& publicPlayersState.length
 											&& publicPlayersState.find(player => userName === player.userName)) {
 											return publicPlayersState.find(player => userName === player.userName).isDead;
@@ -428,18 +480,6 @@ export default class Gamechat extends React.Component {
 					this.leaveGameModal = c;
 				}}>
 					<h2 className="ui header">DANGER.  Leaving an in-progress game will ruin it for the other players (unless you've been executed).  Do this only in the case of a game already ruined by an AFK/disconnected player or if someone has already left.</h2>
-					<h3>Are you leaving because of a griefing player?  Click on them below to report them for bad karma.</h3>
-					<ul>
-					{(() => {
-						const playerNames = gameInfo.publicPlayersState.map(player => player.userName);
-
-						return playerNames.map((player, index) => {
-							if (player !== userInfo.userName) {
-								return <li key={index}><label><input type="radio" name="karmaradio" onChange={() => { this.handleBadKarmaCheck(player);}} />{player}{`{${index + 1}}`}</label></li>;
-							}
-						});
-					})()}
-					</ul>
 					<div className="ui green positive inverted leave-game button">
 						<i className="checkmark icon"></i>
 						Leave game
@@ -482,3 +522,8 @@ Gamechat.propTypes = {
 	socket: React.PropTypes.object,
 	userList: React.PropTypes.object
 };
+
+export default connect(
+	null,
+	mapDispatchToProps
+)(Gamechat);
