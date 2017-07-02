@@ -5,3 +5,4 @@ exports.p7LiberalWin = require('./p7LiberalWin');
 exports.veto = require('./veto');
 exports.veto2 = require('./veto2');
 exports.hitlerKilledLiberalLoss = require('./hitlerKilledLiberalLoss');
+exports.error = require('./error');

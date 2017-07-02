@@ -8,7 +8,8 @@ const {
 	p7HitlerKilled,
 	p7LiberalWin,
 	veto,
-	veto2
+	veto2,
+	error
 } = require('../__test__/mocks');
 
 /*
@@ -29,7 +30,8 @@ const mocks = List([
 	p7HitlerKilled,
 	p7LiberalWin,
 	veto,
-	veto2
+	veto2,
+	error
 ]);
 
 const savePromises = mocks.map(m => {
